@@ -1,0 +1,14 @@
+build/
+bin/
+obj/
+*.o
+*.so
+*.a
+*.dll
+*.exe
+x64/
+x86/
+*.pdb
+*.ilk
+*.user
+.vs/
