@@ -26,6 +26,10 @@ Pager::Pager(const string& fileName) {
   cout << "Opened database file " << filename << " (" << num_pages << " pages)\n";
 }
 
+bool Pager::is_declared(int page_id) {
+    return (pages[page_id] != nullptr);
+}
+
 char* Pager::get_page(int page_id) {
   if(page_id >= TABLE_MAX_PAGES) {
     cout << "Tried to fetch page number out of bounds (" << page_id << ")\n";

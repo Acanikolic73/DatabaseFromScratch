@@ -11,14 +11,12 @@ int main() {
 
   Pager pager("mydatabase.db");
   Table table(&pager);
+  
+  //cout << pager.num_pages << endl;
 
-  char* root = pager.get_page(0);
-  short type = get_type(root);
-  if (type != NODE_LEAF) {
-      init_leaf(root);
-      set_root(root, 1);
-      table.root_id = 0;
-  }
+  Load(&table);
+  dfs_btree(&pager, 16);
+ //for (int i = 0; i < 15; i++) cout << "i = " << is_root(table.pager->get_page(i)) << endl;
 
   string input;
   while(true) {
@@ -34,10 +32,10 @@ int main() {
       insert_row(&table, Row);
       cout << "Row is successfully inserted\n";
     } else if(command == "select") {
-        print(&table);
+      print(&table);
     } else if(command == "exit") {
       //for persistent save
-        table.pager->flush_page(table.root_id);
+      table.pager->flush_page(table.root_id);
       cout << "Bye\n";
       break;
     } else {

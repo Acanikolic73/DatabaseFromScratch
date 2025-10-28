@@ -4,9 +4,9 @@
 void compress_row(const row& Row, char* dest) {
     memcpy(dest, &Row.id, ID_SIZE);
     memset(dest + ID_SIZE, 0, USERNAME_SIZE);
-    strncpy_s(dest + ID_SIZE, USERNAME_SIZE, Row.username.c_str(), _TRUNCATE);
+    strncpy_s(dest + ID_SIZE, USERNAME_SIZE, Row.username.c_str(), USERNAME_SIZE - 1);
     memset(dest + ID_SIZE + USERNAME_SIZE, 0, EMAIL_SIZE);
-    strncpy_s(dest + ID_SIZE + USERNAME_SIZE, EMAIL_SIZE, Row.email.c_str(), _TRUNCATE);
+    strncpy_s(dest + ID_SIZE + USERNAME_SIZE, EMAIL_SIZE, Row.email.c_str(), EMAIL_SIZE - 1);
 }
 
 row decompress_row(const char* src) {

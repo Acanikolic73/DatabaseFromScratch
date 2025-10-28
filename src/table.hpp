@@ -15,3 +15,6 @@ struct Table {
 char* row_location(Pager &pager, int row_id);
 void insert_row(Table* table, row& Row);
 void print(Table* table);
+void print(Pager* pager, int page_num);
+void Load(Table* table);
+void dfs_btree(Pager* p, int node);

@@ -19,5 +19,6 @@ struct Pager {
   Pager(const string& fileName);
   char* get_page(int page_id);
   void flush_page(int page_id);
+  bool is_declared(int page_id);
   ~Pager();
 };
