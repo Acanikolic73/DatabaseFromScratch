@@ -7,16 +7,37 @@
 
 using namespace std;
 
+bool IsExist(string path) {
+    ifstream file(path, ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+    //check is empty
+    file.seekg(0, ios::end);
+    if (file.tellg() == 0) {
+        file.close();
+        return false;
+    }
+    file.close();
+    return true;
+}
+
 int main() {
+
+  bool Is = IsExist("mydatabase.db");
 
   Pager pager("mydatabase.db");
   Table table(&pager);
   
-  //cout << pager.num_pages << endl;
-
-  Load(&table);
-  dfs_btree(&pager, 16);
- //for (int i = 0; i < 15; i++) cout << "i = " << is_root(table.pager->get_page(i)) << endl;
+  if (!Is) {
+      char* root = pager.get_page(0);
+      init_leaf(root);
+      set_type(root, NODE_LEAF);
+      set_root(root, 1);
+  }
+  else {
+      Load(&table);
+  }
 
   string input;
   while(true) {

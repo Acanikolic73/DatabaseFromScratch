@@ -108,11 +108,11 @@ void insert_row(Table* table, row& Row) {
     if (get_type(leaf) == NODE_LEAF) {
         int n = *leaf_get_num_cells(leaf);
         if (n == LEAF_MAX_CELLS) {
-            cout << "Sefe sad splitujem " << endl;
+           // cout << "Sefe sad splitujem " << endl;
             Split(table, leaf, Row);
         }
         else {
-            cout << "radi " << table->root_id << endl;
+           // cout << "radi " << table->root_id << endl;
             insert_leaf(leaf, Row.id, Row);
             table->pager->flush_page(table->root_id);
         }
@@ -134,14 +134,14 @@ void print(Pager* pager, int page_num) {
         }
     }
     else if (type == NODE_INTERNAL) {
-        cout << "correct" << endl;
+        //cout << "correct" << endl;
         int num_keys = *internal_get_num_keys(node);
         for (int i = 0; i < num_keys; i++) {
             int child_page = *internal_get_child(node, i);
             print(pager, child_page);
         }
         int right_page = *internal_get_right_child(node);
-        cout << "evo " << right_page << endl;
+        //cout << "evo " << right_page << endl;
         print(pager, right_page);
     }
 }
@@ -154,7 +154,7 @@ void print(Table* table) {
 void Load(Table* table) {
     int root_id = table->root_id;
     char* root = table->pager->get_page(root_id);
-    cout << "DAL " << is_root(root) << endl;
+    //cout << "DAL " << is_root(root) << endl;
     while (!is_root(root)) {
         root_id = get_parent(root);
         root = table->pager->get_page(root_id);
