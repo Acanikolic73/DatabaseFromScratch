@@ -1,14 +1,32 @@
+# Build folders
 build/
 bin/
 obj/
+x64/
+x86/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+
+# Compiled objects and binaries
 *.o
 *.so
 *.a
 *.dll
 *.exe
-x64/
-x86/
 *.pdb
 *.ilk
-*.user
-.vs/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.cache
+
+# Database files
+mydatabase.db
+*.db
+
