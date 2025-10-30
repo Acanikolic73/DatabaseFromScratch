@@ -89,6 +89,7 @@ int* internal_get_key(char* node, int id);
 void init_internal(char* node);
 int find_child_index(char* node, int key);
 void insert_internal(char* node, int child, int key);
+int get_node_id(Table* table, char* node);
 
 void insert_into_parent(Table* table, int left_page, int key, int right_page);
 

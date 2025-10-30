@@ -49,6 +49,16 @@ void init_leaf(char* node) {
     *leaf_get_next(node) = 0;
 }
 
+int get_node_id(Table* table, char* node) {
+    Pager* pager = table->pager;
+    for (int i = 0; i < pager->num_pages; ++i) {
+        if (pager->pages[i] == node) return i;
+    }
+    return -1; // not found (shouldn't happen)
+}
+
+
+
 // return pointer to the start of a cell
 void* leaf_get_cell(char* node, int cell_id) {
     return node + LEAF_NODE_HEADER_SIZE + cell_id * LEAF_CELL_SIZE;
@@ -70,13 +80,17 @@ void insert_leaf(char* node, int key, row& Row) {
         cout << "Error: leaf node full\n";
         return;
     }
-
-    // Append at the end (no sorting / shifting yet)
-    *leaf_get_num_cells(node) = n + 1;
-    *leaf_get_key(node, n) = key;
-    void* value_pointer = leaf_get_value(node, n);
+    int i = n - 1;
+    while (i >= 0 && *leaf_get_key(node, i) > key) {
+        memcpy(leaf_get_cell(node, i + 1), leaf_get_cell(node, i), LEAF_CELL_SIZE);
+        i--;
+    }
+    *leaf_get_key(node, i + 1) = key;
+    void* value_pointer = leaf_get_value(node, i + 1);
     compress_row(Row, reinterpret_cast<char*>(value_pointer));
+    *leaf_get_num_cells(node) = n + 1;
 }
+
 
 /// internal functions 
 
@@ -132,16 +146,18 @@ int find_child_index(char* node, int key) {
     return ans;
 }
 
-void insert_internal(char* node, int child, int key) {
+/*void insert_internal(char* node, int child, int key) {
     int n = *internal_get_num_keys(node);
     if (n >= INTERNAL_MAX_CELLS) {
         cout << "Error: internal node is full\n";
         return;
     }
+    //int i = n - 1;
+    //while(i >= 0 && *internal_get_key(node, i))
     memcpy(internal_get_child(node, n), &child, INTERNAL_CHILD_SIZE);
     memcpy(internal_get_key(node, n), &key, INTERNAL_KEY_SIZE);
     *internal_get_num_keys(node) = n + 1;
-}
+}*/
 
 char* find_leaf(Pager* pager, int node_id, int key) {
     char* node = pager->get_page(node_id);
@@ -149,25 +165,51 @@ char* find_leaf(Pager* pager, int node_id, int key) {
     if (type == NODE_LEAF) {
         return node;
     }
-    int n = *internal_get_num_keys(node);
-    for (int i = 0; i < n; i++) {
+    int num_keys = *internal_get_num_keys(node);
+    for (int i = 0; i < num_keys; ++i) {
         int cur_key = *internal_get_key(node, i);
-        if (cur_key > key) {
-            return find_leaf(pager, *internal_get_child(node, i), key);
+        if (key < cur_key) {
+            int child_page = *internal_get_child(node, i);
+            return find_leaf(pager, child_page, key);
         }
     }
-    return find_leaf(pager, *internal_get_right_child(node), key);
+    int right_page = *internal_get_right_child(node);
+    //cout << "IDE DESNO " << right_page << endl;
+    return find_leaf(pager, right_page, key);
 }
 //internal
 
-void internal_insert_at(char* parent, int index, int id, int key) {
-    int n = *internal_get_num_keys(parent);
-    for (int i = n; i > index; i--) { // right shift
-        memcpy(internal_get_cell(parent, i), internal_get_cell(parent, i - 1), INTERNAL_CELL_SIZE);
+void internal_insert_at(char* parent, int index, int right_child_id, int key) {
+    int n = *internal_get_num_keys(parent); // old number of keys
+    int* keys = new int[n + 1];
+    int* children = new int[n + 2];
+
+    for (int i = 0; i < n; ++i) {
+        children[i] = *internal_get_child(parent, i);
+        keys[i] = *internal_get_key(parent, i);
     }
-    *internal_get_child(parent, index) = id;
-    *internal_get_key(parent, index) = key;
+    children[n] = *internal_get_right_child(parent);
+
+    // shift entries to make room at index
+    for (int i = n; i > index; --i) {
+        keys[i] = keys[i - 1];
+        children[i + 1] = children[i];
+    }
+    keys[index] = key;
+    children[index + 1] = right_child_id;
     *internal_get_num_keys(parent) = n + 1;
+    for (int i = 0; i < n + 1; ++i) {
+        if (i < n + 1) {
+            *internal_get_child(parent, i) = children[i];
+        }
+        if (i < n + 1) {
+            *internal_get_key(parent, i) = keys[i];
+        }
+    }
+    set_internal_right_child(parent, children[n + 1]);
+
+    delete[] keys;
+    delete[] children;
 }
 
 int internal_find_child_index(char* parent, int id) {

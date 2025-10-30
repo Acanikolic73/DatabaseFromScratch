@@ -30,7 +30,7 @@ int create_page(Pager* pager) {
 void create_root(Table* table, int left_child_page, int right_child_page, int key) {
     int root_page = create_page(table->pager);
     char* root_node = table->pager->get_page(root_page);
-    cout << "NOVI ROOT " << left_child_page << " " << right_child_page << endl;
+    //cout << "NOVI ROOT " << left_child_page << " " << right_child_page << endl;
 
     // Initialize as internal node
     init_internal(root_node);
@@ -67,9 +67,12 @@ void create_root(Table* table, int left_child_page, int right_child_page, int ke
 void Split(Table* table, char* node, row& Row) {
     int id = create_page(table->pager);
     int n = *leaf_get_num_cells(node);
-    int half = n / 2;
+    int half = (n + 1) / 2;
     char* new_node = table->pager->get_page(id);
     init_leaf(new_node);
+    /*cout << "SPLITING" << endl;
+    for (int i = 0; i < n; i++) cout << *leaf_get_key(node, i) << " ";
+    cout << endl;*/
     for (int i = half; i < n; i++) {
         int cur_key;
         row cur;
@@ -93,11 +96,11 @@ void Split(Table* table, char* node, row& Row) {
     //is node is root we need to create new root 
     if (is_root(node)) {
         int separator_key = *leaf_get_key(new_node, 0);
-        create_root(table, table->root_id, id, separator_key);
+        create_root(table, get_node_id(table, node), id, separator_key);
     }
     else {
         int separator_key = *leaf_get_key(new_node, 0);
-        insert_into_parent(table, get_parent(node), separator_key, id);
+        insert_into_parent(table, get_node_id(table, node), separator_key, id);
     }
     table->pager->flush_page(id);
 }
@@ -170,56 +173,60 @@ void split_internal(Table* table, int parent_id, int index, int child_id, int ke
     int new_node_id = create_page(table->pager);
     char* new_node = table->pager->get_page(new_node_id);
     init_internal(new_node);
-    int *keys = new int[n + 2];
-    int* child = new int[n + 3];
-    for (int i = 0; i < n; i++) {
-        child[i] = *internal_get_child(parent, i);
+    vector<int> keys(n + 1);
+    vector<int> children(n + 2);
+
+    for (int i = 0; i < n; ++i) {
         keys[i] = *internal_get_key(parent, i);
+        children[i] = *internal_get_child(parent, i);
     }
-    child[n] = *internal_get_right_child(parent);
-    for (int i = n; i > index; i--) {
-        child[i] = child[i - 1];
-        keys[i - 1] = keys[i - 2];
+    children[n] = *internal_get_right_child(parent);
+    for (int i = n; i > index; --i) {
+        keys[i] = keys[i - 1];
+        children[i + 1] = children[i];
     }
     keys[index] = key;
-    child[index + 1] = child_id;
+    children[index + 1] = child_id;
     int half = (n + 1) / 2;
     *internal_get_num_keys(parent) = half;
-    for (int i = 0; i < half; i++) {
-        *internal_get_child(parent, i) = child[i];
+    for (int i = 0; i < half; ++i) {
         *internal_get_key(parent, i) = keys[i];
+        *internal_get_child(parent, i) = children[i];
     }
-    set_internal_right_child(parent, child[half]);
-    int rest = n - half;
+    set_internal_right_child(parent, children[half]);
+    int total_keys_after = n + 1;
+    int rest = total_keys_after - (half + 1);
     *internal_get_num_keys(new_node) = rest;
-    for (int i = 0; i < rest; i++) {
-        *internal_get_child(new_node, i) = child[i + half + 1];
-        *internal_get_key(new_node, i) = keys[i + half + 1];
+    for (int i = 0; i < rest; ++i) {
+        *internal_get_key(new_node, i) = keys[half + 1 + i];
+        *internal_get_child(new_node, i) = children[half + 1 + i];
     }
-    set_internal_right_child(new_node, child[n]);
-    //set parent for right 
-    for (int i = 0; i < rest; i++) {
-        int id = *internal_get_child(new_node, i);
-        char* ch = table->pager->get_page(id);
+    set_internal_right_child(new_node, children[total_keys_after]);
+    for (int i = 0; i < rest; ++i) {
+        int cid = *internal_get_child(new_node, i);
+        char* ch = table->pager->get_page(cid);
         set_parent(ch, new_node_id);
     }
-    int right_id = *internal_get_right_child(new_node);
-    char* right_node = table->pager->get_page(right_id);
-    set_parent(right_node, new_node_id);
+    int new_right_id = *internal_get_right_child(new_node);
+    if (new_right_id != 0) {
+        char* new_right = table->pager->get_page(new_right_id);
+        set_parent(new_right, new_node_id);
+    }
     int split_key = keys[half];
-    insert_into_parent(table, parent_id, split_key, right_id);
-    delete[] keys;
-    delete[] child;
-    //set parent for left
-    for (int i = 0; i < half; i++) {
-        int id = *internal_get_child(parent, i);
-        char* ch = table->pager->get_page(id);
+    insert_into_parent(table, parent_id, split_key, new_node_id);
+
+    for (int i = 0; i < half; ++i) {
+        int cid = *internal_get_child(parent, i);
+        char* ch = table->pager->get_page(cid);
         set_parent(ch, parent_id);
     }
-    right_id = *internal_get_right_child(parent);
-    right_node = table->pager->get_page(right_id);
-    set_parent(right_node, parent_id);
-    //flush pages
+    int parent_right = *internal_get_right_child(parent);
+    if (parent_right != 0) {
+        char* pr = table->pager->get_page(parent_right);
+        set_parent(pr, parent_id);
+    }
+
+    // flush pages
     table->pager->flush_page(parent_id);
     table->pager->flush_page(new_node_id);
 }
@@ -232,8 +239,20 @@ void insert_into_parent(Table* table, int left_id, int key, int right_id) {
     }
     int parent_id = get_parent(left);
     char* parent = table->pager->get_page(parent_id);
-    int where = internal_find_child_index(parent, left_id);
-    if (*internal_get_num_keys(parent) < INTERNAL_MAX_CELLS) {
+
+    int n = *internal_get_num_keys(parent);
+    int where = 0;
+    /*cout << "IZAND2 ::: " << endl;
+    for (int i = 0; i < n; i++) cout << *internal_get_key(parent, i) << " ";
+    cout << endl;*/
+    while (where < n && key > *internal_get_key(parent, where)) {
+        //cout << "u whileu si " << *internal_get_key(parent, where) << endl;
+        where++;
+    }
+
+    if (n < INTERNAL_MAX_CELLS) {
+       // cout << "IZNAD ::: " << *internal_get_key(parent, 0) << endl;
+        //cout << "DBG ::: " << key << " " << where << endl;
         internal_insert_at(parent, where, right_id, key);
         char* right = table->pager->get_page(right_id);
         set_parent(right, parent_id);

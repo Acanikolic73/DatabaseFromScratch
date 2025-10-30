@@ -39,6 +39,8 @@ int main() {
       Load(&table);
   }
 
+  dfs_btree(&pager, table.root_id);
+
   string input;
   while(true) {
     cout << "db > ";
